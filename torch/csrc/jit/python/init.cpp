@@ -45,6 +45,7 @@
 #include <torch/csrc/jit/passes/quantization/fusion_passes.h>
 #include <torch/csrc/jit/passes/quantization/insert_observers.h>
 #include <torch/csrc/jit/passes/quantization/insert_quant_dequant.h>
+#include <torch/csrc/jit/passes/quantization/qat_combine_conv_bn.h>
 #include <torch/csrc/jit/passes/quantization/quantization_type.h>
 #include <torch/csrc/jit/passes/remove_dropout.h>
 #include <torch/csrc/jit/passes/remove_expands.h>
@@ -227,6 +228,7 @@ void initJITBindings(PyObject* module) {
           "_jit_pass_quant_fusion",
           [](std::shared_ptr<Graph>& g) { return QuantFusion(g); })
       .def("_jit_pass_fold_convbn", &FoldConvBatchNorm2d)
+      .def("_jit_pass_qat_combine_convbn", &QATCombineConvBatchNorm2d)
       .def(
           "_freeze_module",
           [](Module& module, std::vector<std::string>& preservedAttrs) {

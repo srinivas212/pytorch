@@ -2685,25 +2685,35 @@ class TestQuantizeDynamicScript(QuantizationTestCase):
 class TestQuantizeQATScript(QuantizationTestCase):
 
     def test_prepare_qat(self):
+
         class M(torch.nn.Module):
             def __init__(self):
                 super(M, self).__init__()
-                self.conv = torch.nn.Conv2d(1, 1, 1)
-                self.bn = torch.nn.BatchNorm2d(1)
+                self.conv1 = torch.nn.Conv2d(1, 1, 1)
+                self.bn1 = torch.nn.BatchNorm2d(1)
 
             def forward(self, x):
-                x = self.conv(x)
-                x = self.bn(x)
+                x = self.conv1(x)
+                x = self.bn1(x)
                 return x
+
+        # debug only - eager mode
+        eager = M()
+        torch.quantization.fuse_modules(eager, [['conv1', 'bn1']], inplace=True)
+        eager.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+        torch.quantization.prepare_qat(eager, inplace=True)
+        print(eager)
+        eager_scripted = torch.jit.script(eager)
+        print(eager_scripted)
 
         m = torch.jit.script(M())
         m = prepare_qat_script(m, {'': default_qat_qconfig})
 
         # TODO(future PR): modify this as needed after we add QAT conv-bn logic
         assert len(attrs_with_prefix(m, '_observer_')) == 2
-        assert len(attrs_with_prefix(m.conv, '_observer_')) == 1
+        assert len(attrs_with_prefix(m.conv1, '_observer_')) == 1
         FileCheck().check('FakeQuantize = prim::GetAttr[name="_observer_') \
-                   .check('prim::GetAttr[name="conv"]') \
+                   .check('prim::GetAttr[name="conv1"]') \
                    .check('prim::CallMethod') \
                    .check_not('Observer = prim::GetAttr[name="_observer_') \
                    .run(m.graph)
